@@ -44,3 +44,4 @@ uvicorn.log
 htmlcov/
 .coverage
 
+privReadme-rasp.md
