@@ -20,7 +20,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-CALENDLY_LINK  = os.getenv("CALENDLY_LINK", "https://calendly.com/geniusact")
+# CALENDLY_LINK  = os.getenv("CALENDLY_LINK", "https://calendly.com/geniusact")
+CALENDLY_LINK  = os.getenv("CALENDLY_LINK", "https://calendly.com/geniusact-keep-empowering")
 
 # ─────────────────────────────────────────────
 # SECURITY SETTINGS — tweak these as needed
