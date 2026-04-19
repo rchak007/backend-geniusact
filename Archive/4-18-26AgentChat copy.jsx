@@ -85,16 +85,8 @@ export default function AgentChat() {
     }
   }, [isOpen]);
 
-  const retryCount = useRef(0);
-  const retryTimer = useRef(null);
-  const MAX_RETRIES = 3;
-
   const connect = useCallback(() => {
-    // Don't connect if already open or currently connecting
-    if (
-      wsRef.current?.readyState === WebSocket.OPEN ||
-      wsRef.current?.readyState === WebSocket.CONNECTING
-    ) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     setStatus("connecting");
     const ws = new WebSocket(`${WS_BASE}/${sessionId.current}`);
@@ -102,18 +94,14 @@ export default function AgentChat() {
 
     ws.onopen = () => {
       setStatus("connected");
-      retryCount.current = 0; // reset on success
-      setMessages(prev => {
-        if (prev.length === 0) {
-          return [{
-            id: "welcome",
-            role: "bot",
-            content: "Hey! 👋 I'm the GeniusAct assistant. Ask me anything about crypto payments, fees, or how to get started!",
-            ts: new Date(),
-          }];
-        }
-        return prev;
-      });
+      if (messages.length === 0) {
+        setMessages([{
+          id: "welcome",
+          role: "bot",
+          content: "Hey! 👋 I'm the GeniusAct assistant. Ask me anything about crypto payments, fees, or how to get started!",
+          ts: new Date(),
+        }]);
+      }
     };
 
     ws.onmessage = (e) => {
@@ -139,31 +127,12 @@ export default function AgentChat() {
       }
     };
 
-    ws.onclose = () => {
-      setStatus("disconnected");
-      // Auto-retry if chat is open and we haven't exceeded retries
-      if (retryCount.current < MAX_RETRIES) {
-        retryCount.current += 1;
-        const delay = Math.min(1000 * retryCount.current, 3000); // 1s, 2s, 3s
-        retryTimer.current = setTimeout(() => {
-          if (wsRef.current?.readyState !== WebSocket.OPEN) {
-            connect();
-          }
-        }, delay);
-      }
-    };
-
-    ws.onerror = () => {
-      // onerror is always followed by onclose, so let onclose handle retry
-      setStatus("error");
-    };
-  }, []); // stable — no deps that change
+    ws.onclose = () => setStatus("disconnected");
+    ws.onerror = () => setStatus("error");
+  }, [messages.length, isOpen]);
 
   useEffect(() => {
     if (isOpen) connect();
-    return () => {
-      if (retryTimer.current) clearTimeout(retryTimer.current);
-    };
   }, [isOpen, connect]);
 
   const send = () => {
@@ -206,8 +175,6 @@ export default function AgentChat() {
   const suggestions = [
     "How does crypto checkout work?",
     "How much can I save on fees?",
-    "I'm a business — how do I integrate?",
-    "I'm a shopper — how do I pay with crypto?",
     "Show me a demo",
     "Book a call",
   ];
