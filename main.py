@@ -183,6 +183,7 @@ def get_merchant_onboarding(question: str) -> str:
             "We handle the wallet integration, USDC payment button, and transaction confirmation flow.\n"
             "3) Go Live — We test everything together, then flip it on. Most integrations are done in 3–5 business days.\n\n"
             "Book a discovery call to get started: " + CALENDLY_LINK
+            "You can also see a live checkout demo at /cart to see exactly what your customers would experience."
         ),
         "technical": (
             "We work with all major e-commerce stacks — Shopify, WooCommerce, React, Next.js, "
@@ -236,7 +237,8 @@ def get_consumer_wallet_guide(question: str) -> str:
             "2) Add USDC to your wallet — you can buy USDC directly in Phantom with a debit card or "
             "transfer from an exchange like Coinbase.\n"
             "3) At checkout, click 'Crypto Checkout', connect your wallet, and approve the payment. Done!\n\n"
-            "We also have a step-by-step setup guide on our site at /crypto-wallet-setup-guide"
+            "Want to see how it looks? Check out our live checkout demo at /cart"
+            
         ),
         "wallets": (
             "We recommend Phantom wallet — it's the most popular Solana wallet with millions of users. "
@@ -258,7 +260,7 @@ def get_consumer_wallet_guide(question: str) -> str:
             "3) Your wallet pops up — review the amount and click 'Approve'\n"
             "4) Payment confirms in seconds, you get your confirmation\n\n"
             "It's actually faster than typing in a credit card number! "
-            "Try it on our live demo at /cart"
+            "Try it on our live demo"
         ),
     }
     q = question.lower()
