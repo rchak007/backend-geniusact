@@ -179,8 +179,8 @@ def get_merchant_onboarding(question: str) -> str:
         "process": (
             "Our onboarding is a 3-step process:\n"
             "1) Discovery — We review your current website and checkout flow (15-min call).\n"
-            "2) Integration — Our team adds the crypto checkout alongside your existing Stripe/PayPal. "
-            "We handle the wallet connection, payment button, and transaction confirmation flow.\n"
+            "2) Integration — Our team adds a Solana wallet connection and crypto checkout alongside your existing Stripe/PayPal. "
+            "We handle the wallet integration, USDC payment button, and transaction confirmation flow.\n"
             "3) Go Live — We test everything together, then flip it on. Most integrations are done in 3–5 business days.\n\n"
             "Book a discovery call to get started: " + CALENDLY_LINK
         ),
