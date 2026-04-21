@@ -182,7 +182,7 @@ def get_merchant_onboarding(question: str) -> str:
             "2) Integration — Our team adds a Solana wallet connection and crypto checkout alongside your existing Stripe/PayPal. "
             "We handle the wallet integration, USDC payment button, and transaction confirmation flow.\n"
             "3) Go Live — We test everything together, then flip it on. Most integrations are done in 3–5 business days.\n\n"
-            "Book a discovery call to get started: " + CALENDLY_LINK
+            "Book a discovery call to get started: " + CALENDLY_LINK + "\n\n"
             "You can also see a live checkout demo at /cart to see exactly what your customers would experience."
         ),
         "technical": (
