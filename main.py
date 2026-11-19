@@ -28,6 +28,17 @@ CALENDLY_LINK  = os.getenv("CALENDLY_LINK", "https://calendly.com/geniusact")
 MAX_MESSAGE_LENGTH   = 500    # max characters per message
 MAX_MESSAGES_PER_MIN = 10     # max messages per session per minute
 MAX_MESSAGES_PER_SESSION = 50 # max total messages per session
+
+# --- Pricing: single source of truth --------------------------------------
+# These MUST match what the website says (frontend Dashboard.jsx). Before this
+# block existed the backend quoted 1%, 0.1%, 0.01% and "less than $0.01" in
+# five different places, to live prospects. Change the fee HERE and nowhere
+# else — every number the chatbot quotes is derived from these.
+FEE_PER_TX = 0.05       # what GeniusAct charges per crypto transaction, USD
+CARD_PCT = 0.029        # Stripe/PayPal headline percentage
+CARD_PER_TX = 0.30      # Stripe/PayPal per-transaction fee, USD
+ASSUMED_AOV = 100.0     # average order value assumed when the merchant
+                        # hasn't told us their transaction count
 MAX_SESSIONS         = 500    # max concurrent sessions in memory
 
 # ─────────────────────────────────────────────
@@ -76,14 +87,17 @@ def get_product_info(topic: str) -> str:
             "— all from a single checkout. We help businesses cut payment fees by up to 99.7%."
         ),
         "pricing": (
-            "GeniusAct charges just 1% per transaction for crypto payments. "
-            "Compare that to Stripe and PayPal which charge 2.9% + $0.30 per transaction. "
-            "On $10,000/month in sales, you save roughly $190/month switching to crypto payments."
+            f"GeniusAct charges a flat ${FEE_PER_TX:.2f} per transaction for crypto "
+            "payments — a fixed amount, not a percentage, so it doesn't grow as your "
+            "order sizes grow. Compare that to Stripe and PayPal at 2.9% + $0.30 per "
+            "transaction. On $10,000/month in sales across about 100 orders, that's "
+            "roughly $5/month in fees instead of $320."
         ),
         "crypto": (
-            "We support USDC stablecoin payments on Solana — fees are less than $0.01 per transaction. "
-            "USDC is pegged 1:1 to the US dollar so there's no price volatility. "
-            "Payments settle instantly to your wallet."
+            f"We support USDC stablecoin payments on Solana. You pay a flat "
+            f"${FEE_PER_TX:.2f} per transaction — the Solana network fee itself is a "
+            "fraction of a cent. USDC is pegged 1:1 to the US dollar so there's no "
+            "price volatility. Payments settle instantly to your wallet."
         ),
         "stripe": (
             "Our Stripe integration lets customers pay with any major credit or debit card "
@@ -127,28 +141,51 @@ def get_booking_link(reason: str = "demo") -> str:
 
 
 @tool
-def get_fee_savings(monthly_volume: str) -> str:
+def get_fee_savings(monthly_volume: str, avg_order_value: str = "") -> str:
     """
     Calculates how much a business would save by switching to GeniusAct crypto payments.
     Use when users ask about savings, cost comparison, or mention their sales volume.
     Args:
         monthly_volume: monthly sales volume mentioned by user e.g. '$5000', '10000'
+        avg_order_value: the user's typical order size if they mention it e.g. '$80'.
+            Leave empty if they haven't said — a $100 average is assumed.
     """
+    def _money(raw: str) -> float:
+        return float(str(raw).replace("$", "").replace(",", "").strip())
+
     try:
-        amount = float(monthly_volume.replace("$", "").replace(",", "").strip())
-        stripe_fee = (amount * 0.029) + (30 * 0.30)
-        crypto_fee = amount * 0.001
-        savings    = stripe_fee - crypto_fee
+        amount = _money(monthly_volume)
+        if amount <= 0:
+            raise ValueError("monthly volume must be positive")
+
+        try:
+            aov = _money(avg_order_value) if str(avg_order_value).strip() else ASSUMED_AOV
+        except ValueError:
+            aov = ASSUMED_AOV
+        if aov <= 0:
+            aov = ASSUMED_AOV
+
+        # Both sides charge per transaction, so the transaction COUNT drives the
+        # comparison, not the volume alone. The old version hardcoded 30
+        # transactions regardless of volume, which modelled a $100k/month
+        # merchant identically to a $1k/month one.
+        transactions = max(1, round(amount / aov))
+        card_fee = (amount * CARD_PCT) + (transactions * CARD_PER_TX)
+        crypto_fee = transactions * FEE_PER_TX
+        savings = card_fee - crypto_fee
+
         return (
-            f"On ${amount:,.0f}/month in sales: "
-            f"Stripe/PayPal would cost ~${stripe_fee:,.2f}/month in fees. "
+            f"On ${amount:,.0f}/month in sales (about {transactions:,} transactions "
+            f"at ${aov:,.0f} each): "
+            f"Stripe/PayPal would cost ~${card_fee:,.2f}/month in fees. "
             f"With GeniusAct crypto payments: ~${crypto_fee:,.2f}/month. "
-            f"You'd save ~${savings:,.2f}/month — that's ${savings*12:,.0f}/year! 🎉"
+            f"You'd save ~${savings:,.2f}/month — that's ${savings * 12:,.0f}/year! 🎉"
         )
     except Exception:
         return (
-            "With GeniusAct you pay just 0.01% in fees vs 2.9%+$0.30 with Stripe/PayPal. "
-            "On $10,000/month that's a saving of ~$280/month. "
+            f"With GeniusAct you pay a flat ${FEE_PER_TX:.2f} per transaction, versus "
+            "2.9% + $0.30 with Stripe/PayPal. On $10,000/month across about 100 "
+            "orders that's roughly $5 instead of $320 — a saving of ~$315/month. "
             "Tell me your monthly volume and I can give you an exact number!"
         )
 
@@ -286,9 +323,11 @@ llm = ChatOpenAI(
     temperature=0.7,
 )
 
-SYSTEM_PROMPT = """You are a friendly, knowledgeable sales assistant for GeniusAct — 
+# NOTE: this prompt states the fee in prose and can't read FEE_PER_TX. If the
+# fee changes, update the "$0.05" below by hand along with the constant.
+SYSTEM_PROMPT = """You are a friendly, knowledgeable sales assistant for GeniusAct —
 a payment platform that helps businesses accept crypto (USDC), card (Stripe), and PayPal 
-payments from one checkout, with fees as low as 0.01%.
+payments from one checkout, with a flat $0.05 fee per crypto transaction.
 
 Your goals:
 1. Answer questions about GeniusAct's features, pricing, and how it works
